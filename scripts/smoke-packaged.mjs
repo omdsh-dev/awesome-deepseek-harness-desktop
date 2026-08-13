@@ -9,7 +9,10 @@ const userData = await mkdtemp(join(tmpdir(), 'adhd-packaged-smoke-'))
 const executable = packagedExecutable()
 
 console.log(`Launching packaged ADHD: ${executable}`)
-const child = spawn(executable, [], {
+// GitHub's unprivileged Linux runner cannot give chrome-sandbox root:4755.
+// This flag is confined to CI smoke; production launchers keep Electron's sandbox enabled.
+const executableArguments = process.platform === 'linux' ? ['--no-sandbox'] : []
+const child = spawn(executable, executableArguments, {
   env: {
     ...process.env,
     ADHD_SMOKE_TEST: '1',
@@ -21,10 +24,10 @@ const child = spawn(executable, [], {
 })
 
 try {
-  const exitCode = await waitForExit(child, timeoutMs)
+  const { code, signal } = await waitForExit(child, timeoutMs)
   const failurePath = join(userData, 'smoke-failure.json')
   if (existsSync(failurePath)) throw new Error(`Packaged app reported failure: ${await readFile(failurePath, 'utf8')}`)
-  if (exitCode !== 0) throw new Error(`Packaged app exited with code ${exitCode}`)
+  if (code !== 0) throw new Error(`Packaged app exited with code ${code ?? 'null'}${signal ? ` (signal ${signal})` : ''}`)
 
   const marker = JSON.parse(await readFile(join(userData, 'smoke-ready.json'), 'utf8'))
   if (!String(marker.readyUrl).startsWith('http://127.0.0.1:')) throw new Error(`Unexpected ready URL: ${marker.readyUrl}`)
@@ -56,9 +59,9 @@ function waitForExit(process, timeout) {
       clearTimeout(timer)
       reject(error)
     })
-    process.once('exit', code => {
+    process.once('exit', (code, signal) => {
       clearTimeout(timer)
-      resolve(code)
+      resolve({ code, signal })
     })
   })
 }
