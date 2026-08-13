@@ -15,11 +15,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-14]
+        os: [ubuntu-latest, windows-latest, macos-15, macos-15-intel]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -28,12 +28,17 @@ jobs:
       - run: npm run dist
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-      - uses: actions/upload-artifact@v4
+      - name: Smoke packaged app (Linux)
+        if: runner.os == 'Linux'
+        run: xvfb-run --auto-servernum npm run smoke:packaged
+      - name: Smoke packaged app (Windows and macOS)
+        if: runner.os != 'Linux'
+        run: npm run smoke:packaged
+      - uses: actions/upload-artifact@v7
         with:
           name: ADHD-${{ runner.os }}-${{ runner.arch }}
           path: |
             dist/*.AppImage
-            dist/*.tar.gz
             dist/*.dmg
             dist/*.zip
             dist/*.exe

@@ -1,8 +1,9 @@
 {
   "name": "awesome-deepseek-harness-desktop",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "ADHD — an out-of-the-box Electron desktop app for DeepSeek Harness",
   "private": true,
+  "desktopName": "dev.omdsh.adhd.desktop",
   "type": "module",
   "main": "electron/main.mjs",
   "author": "omdsh-dev",
@@ -17,10 +18,11 @@
   "scripts": {
     "start": "electron .",
     "test": "node --test",
-    "check": "node --check electron/main.mjs && node --check electron/runtime.mjs && node --check scripts/prepare-runtime.mjs && npm test",
+    "check": "node --check electron/main.mjs && node --check electron/runtime.mjs && node --check scripts/prepare-runtime.mjs && node --check scripts/smoke-packaged.mjs && npm test",
+    "smoke:packaged": "node scripts/smoke-packaged.mjs",
     "prepare:runtime": "node scripts/prepare-runtime.mjs",
     "pack": "npm run prepare:runtime && electron-builder --dir",
-    "dist": "npm run prepare:runtime && electron-builder"
+    "dist": "npm run prepare:runtime && electron-builder --publish never"
   },
   "dependencies": {
     "@deepseek-ai/dsh": "0.1.0-rc.6"
@@ -32,7 +34,13 @@
   "build": {
     "appId": "dev.omdsh.adhd",
     "productName": "ADHD",
-    "asar": false,
+    "icon": "build/icon.png",
+    "asar": true,
+    "asarUnpack": [
+      "node_modules/**/*"
+    ],
+    "npmRebuild": false,
+    "executableName": "ADHD",
     "directories": {
       "output": "dist"
     },
@@ -49,6 +57,7 @@
     "artifactName": "ADHD-${version}-${os}-${arch}.${ext}",
     "mac": {
       "category": "public.app-category.developer-tools",
+      "minimumSystemVersion": "12.0.0",
       "target": [
         "dmg",
         "zip"
@@ -61,9 +70,9 @@
     },
     "linux": {
       "category": "Development",
+      "syncDesktopName": true,
       "target": [
-        "AppImage",
-        "tar.gz"
+        "AppImage"
       ]
     },
     "nsis": {

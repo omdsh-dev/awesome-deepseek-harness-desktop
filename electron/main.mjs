@@ -1,19 +1,29 @@
 import { spawn, spawnSync } from 'node:child_process'
-import { createWriteStream, mkdirSync } from 'node:fs'
-import { join } from 'node:path'
+import { createWriteStream, mkdirSync, writeFileSync } from 'node:fs'
+import { isAbsolute, join } from 'node:path'
 import { app, BrowserWindow, dialog, shell } from 'electron'
 import {
   assertRuntimeFiles,
   childEnvironment,
   dshBinPath,
+  isAllowedNavigation,
   parseReadyUrl,
   runtimeNodePath,
 } from './runtime.mjs'
 
 const STARTUP_TIMEOUT_MS = 90_000
+const UI_TIMEOUT_MS = 60_000
+const smokeTest = process.env.ADHD_SMOKE_TEST === '1'
 let mainWindow
 let dshProcess
 let shuttingDown = false
+let fatalShown = false
+let harnessOrigin
+
+if (process.env.ADHD_USER_DATA_DIR) {
+  if (!isAbsolute(process.env.ADHD_USER_DATA_DIR)) throw new Error('ADHD_USER_DATA_DIR must be an absolute path')
+  app.setPath('userData', process.env.ADHD_USER_DATA_DIR)
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -32,13 +42,13 @@ function createWindow() {
     },
   })
 
-  mainWindow.once('ready-to-show', () => mainWindow?.show())
+  mainWindow.once('ready-to-show', () => { if (!smokeTest) mainWindow?.show() })
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:\/\//.test(url)) void shell.openExternal(url)
     return { action: 'deny' }
   })
   mainWindow.webContents.on('will-navigate', (event, url) => {
-    if (!url.startsWith('http://127.0.0.1:') && !url.startsWith('file:')) {
+    if (!isAllowedNavigation(url, harnessOrigin)) {
       event.preventDefault()
       if (/^https?:\/\//.test(url)) void shell.openExternal(url)
     }
@@ -64,7 +74,11 @@ function startHarness() {
     resourcesPath: process.resourcesPath,
     execPath: process.execPath,
   })
-  const binPath = dshBinPath({ appPath: app.getAppPath() })
+  const binPath = dshBinPath({
+    appPath: app.getAppPath(),
+    isPackaged: app.isPackaged,
+    resourcesPath: process.resourcesPath,
+  })
   assertRuntimeFiles({ 'Node runtime': nodePath, 'DeepSeek Harness CLI': binPath })
 
   const log = createWriteStream(join(logsDirectory, 'dsh.log'), { flags: 'a' })
@@ -89,7 +103,7 @@ function startHarness() {
     if (!settled && readyUrl) {
       settled = true
       clearTimeout(timeout)
-      void mainWindow?.loadURL(readyUrl)
+      void openHarness(readyUrl)
     }
   }
   dshProcess.stdout.on('data', chunk => onOutput('stdout', chunk))
@@ -101,11 +115,50 @@ function startHarness() {
   dshProcess.on('exit', code => {
     clearTimeout(timeout)
     log.end()
-    if (!shuttingDown && !settled) showStartupError(`DeepSeek Harness exited during startup (code ${code ?? 'unknown'}).`)
+    if (!shuttingDown) {
+      const phase = settled ? 'stopped unexpectedly' : 'exited during startup'
+      showStartupError(`DeepSeek Harness ${phase} (code ${code ?? 'unknown'}).`)
+    }
   })
 }
 
+async function openHarness(readyUrl) {
+  try {
+    harnessOrigin = new URL(readyUrl).origin
+    await mainWindow?.loadURL(readyUrl)
+    if (!smokeTest) return
+    const result = await waitForUiReady()
+    writeFileSync(join(app.getPath('userData'), 'smoke-ready.json'), JSON.stringify({ readyUrl, ...result }, null, 2))
+    app.quit()
+  } catch (error) {
+    showStartupError(error instanceof Error ? error.message : String(error))
+  }
+}
+
+async function waitForUiReady() {
+  const deadline = Date.now() + UI_TIMEOUT_MS
+  while (Date.now() < deadline) {
+    const result = await mainWindow?.webContents.executeJavaScript(`({
+      title: document.title,
+      pluginCount: window.__DSH_BOOT__?.entries?.length ?? 0,
+      rootChildren: document.querySelector('#root')?.childElementCount ?? 0
+    })`)
+    if (result?.pluginCount >= 20 && result.rootChildren > 0) return result
+    await new Promise(resolve => setTimeout(resolve, 250))
+  }
+  throw new Error(`Harness UI did not render within ${UI_TIMEOUT_MS / 1000} seconds`)
+}
+
 function showStartupError(message) {
+  if (fatalShown) return
+  fatalShown = true
+  if (smokeTest) {
+    mkdirSync(app.getPath('userData'), { recursive: true })
+    writeFileSync(join(app.getPath('userData'), 'smoke-failure.json'), JSON.stringify({ message }, null, 2))
+    stopHarness()
+    app.exit(1)
+    return
+  }
   void dialog.showMessageBox(mainWindow, {
     type: 'error',
     title: 'ADHD could not start',

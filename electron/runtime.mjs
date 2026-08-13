@@ -7,13 +7,23 @@ export function parseReadyUrl(output) {
   return READY_LINE.exec(output)?.[1]
 }
 
+export function isAllowedNavigation(url, harnessOrigin) {
+  try {
+    const target = new URL(url)
+    return target.protocol === 'file:' || Boolean(harnessOrigin && target.origin === harnessOrigin)
+  } catch {
+    return false
+  }
+}
+
 export function runtimeNodePath({ isPackaged, resourcesPath, execPath, platform = process.platform }) {
   if (!isPackaged) return execPath
   return join(resourcesPath, 'runtime', platform === 'win32' ? 'node.exe' : 'node')
 }
 
-export function dshBinPath({ appPath }) {
-  return join(appPath, 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
+export function dshBinPath({ appPath, isPackaged = false, resourcesPath = process.resourcesPath }) {
+  const root = isPackaged ? join(resourcesPath, 'app.asar.unpacked') : appPath
+  return join(root, 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
 }
 
 export function assertRuntimeFiles(paths) {

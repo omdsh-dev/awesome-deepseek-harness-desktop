@@ -9,17 +9,19 @@ ADHD 的全名是 **Awesome DeepSeek Harness Desktop**。
 ## 支持哪些系统？
 
 - Windows 10 / 11（64 位）
-- macOS 12 Monterey 及以上（Apple 芯片）
+- macOS 12 Monterey 及以上（Apple 芯片或 Intel 64 位）
 - Linux x64（实验性支持）
 
 Windows 10+ 是 Electron 23 之后的官方支持范围。项目当前使用 Electron 43；macOS 构建使用 macOS 12 仍可运行的 Electron 43 系列。
 
 ## 普通用户怎么安装？
 
-安装包会由 GitHub Actions 自动生成。打开仓库的 **Actions** 页面，进入最近一次成功的 `Build desktop installers`，在页面底部下载自己系统对应的文件：
+安装包会由 GitHub Actions 自动生成，并且只有在安装包真正启动、Harness 后台服务就绪、界面完成渲染后，构建才会显示成功。打开仓库的 **Actions** 页面，进入最近一次成功的 `Build desktop installers`，在页面底部下载自己系统对应的文件：
 
 - Windows：下载 `ADHD-Windows-X64`，解压后运行 `.exe` 安装程序。
 - Apple 芯片 Mac：下载 `ADHD-macOS-ARM64`，解压并打开 `.dmg`。
+- Intel Mac：下载 `ADHD-macOS-X64`，解压并打开 `.dmg`。
+- Linux x64：下载 `ADHD-Linux-X64`，解压后给 `.AppImage` 添加执行权限并运行。
 
 目前安装包还没有购买商业代码签名证书：
 
@@ -93,7 +95,7 @@ npm run check
 npm run dist
 ```
 
-构建脚本会下载与当前系统、CPU 架构匹配的 Node.js 24 LTS，使用 Node.js 官方 `SHASUMS256.txt` 验证后再放入安装包。Windows、macOS、Linux 必须分别在对应系统上原生构建；仓库中的 GitHub Actions 已经配置了三套 Runner。
+构建脚本会下载与当前系统、CPU 架构匹配的 Node.js 24 LTS，使用 Node.js 官方 `SHASUMS256.txt` 验证后再放入安装包。Windows、macOS、Linux 必须分别在对应系统上原生构建；仓库中的 GitHub Actions 已经配置 Windows x64、macOS ARM64、macOS x64 和 Linux x64 四套 Runner。
 
 可设置 `ADHD_WORKSPACE=/path/to/workspace` 覆盖开发环境的默认工作目录。
 
@@ -101,6 +103,7 @@ npm run dist
 
 | 组件 | 版本 |
 | --- | --- |
+| ADHD | `0.2.0` |
 | DeepSeek Harness | `@deepseek-ai/dsh@0.1.0-rc.6` |
 | Electron | `43.4.0` |
 | 内置 Node.js | `v24.19.0`（Krypton LTS） |
@@ -110,8 +113,9 @@ DSH 目前仍是 RC 版本，变化很快。固定版本可以保证同一个 AD
 ## 当前限制
 
 - 安装包尚未进行 Windows Authenticode 或 Apple Developer ID 签名。
-- 第一版暂未提供应用内自动更新。
-- 当前 CI 提供 Windows x64 和 macOS Apple Silicon 安装包；Intel Mac 可在本地使用 x64 Runner 构建。
+- 当前版本暂未提供应用内自动更新。
+- 当前 CI 提供 Windows x64、macOS Apple Silicon、macOS Intel 和 Linux x64 安装包。
+- 自动化 smoke 会启动打包后的 Electron 应用并验证 Harness UI；涉及真实 API 计费的模型对话仍需用户自行配置密钥后验证。
 
 ## 许可证
 
