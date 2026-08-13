@@ -1,0 +1,82 @@
+{
+  "name": "awesome-deepseek-harness-desktop",
+  "version": "0.1.0",
+  "description": "ADHD — an out-of-the-box Electron desktop app for DeepSeek Harness",
+  "private": true,
+  "type": "module",
+  "main": "electron/main.mjs",
+  "author": "omdsh-dev",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/omdsh-dev/awesome-deepseek-harness-desktop.git"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test",
+    "check": "node --check electron/main.mjs && node --check electron/runtime.mjs && node --check scripts/prepare-runtime.mjs && npm test",
+    "prepare:runtime": "node scripts/prepare-runtime.mjs",
+    "pack": "npm run prepare:runtime && electron-builder --dir",
+    "dist": "npm run prepare:runtime && electron-builder"
+  },
+  "dependencies": {
+    "@deepseek-ai/dsh": "0.1.0-rc.6"
+  },
+  "devDependencies": {
+    "electron": "43.4.0",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "dev.omdsh.adhd",
+    "productName": "ADHD",
+    "asar": false,
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "electron/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "build/runtime/${os}-${arch}",
+        "to": "runtime"
+      }
+    ],
+    "artifactName": "ADHD-${version}-${os}-${arch}.${ext}",
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "linux": {
+      "category": "Development",
+      "target": [
+        "AppImage",
+        "tar.gz"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  },
+  "allowScripts": {
+    "@deepseek-ai/dsh-subprocess-local@0.1.0-rc.6": true,
+    "@google/genai@1.52.0": true,
+    "electron-winstaller@5.4.0": true,
+    "koffi@3.1.4": true,
+    "node-pty@1.1.0": true,
+    "protobufjs@7.6.5": true
+  }
+}
