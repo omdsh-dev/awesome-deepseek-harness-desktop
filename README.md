@@ -1,5 +1,7 @@
 # ADHD：开箱即用的 DeepSeek Harness 桌面版
 
+**Author / Maintainer:** [@Zacklinkk](https://github.com/Zacklinkk)
+
 ADHD 的全名是 **Awesome DeepSeek Harness Desktop**。
 
 它把 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 装进一个 Electron 桌面应用里。下载安装包、双击打开，就能使用 Harness，不需要自己安装 Node.js，不需要敲 `dsh web`，也不需要一直开着浏览器。
